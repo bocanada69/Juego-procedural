@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Las Crónicas del Lumin Perdido</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #1a202c;
+            --bg-medium: #2d3748;
+            --border-color: #4a5568;
+            --text-light: #e2e8f0;
+            --text-yellow: #f6e05e;
+            --text-gray: #a0aec0;
+            --accent-red: #e53e3e;
+        }
+        
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 5px;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .game-world {
+            background-color: var(--bg-medium);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 0 25px rgba(0,0,0,0.6);
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+        }
+        
+        #gameCanvas {
+            background-color: #000;
+            border: 3px solid var(--border-color);
+            border-radius: 8px;
+            width: 100%;
+            aspect-ratio: 18/14;
+            image-rendering: pixelated;
+            touch-action: none;
+            font-family: "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
+        }
+        
+        .game-header {
+            margin-bottom: 10px;
+        }
+        
+        .game-title {
+            font-size: 1.5rem;
+            color: var(--accent-red);
+            text-shadow: 2px 2px #000;
+        }
+        
+        .level-indicator {
+            font-size: 0.9rem;
+            color: var(--text-yellow);
+            margin-top: 3px;
+        }
+        
+        .message-area {
+            min-height: 40px;
+            background-color: rgba(0,0,0,0.4);
+            border-radius: 6px;
+            padding: 8px;
+            margin-top: 10px;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            color: var(--text-yellow);
+            border: 1px dashed var(--border-color);
+        }
+        
+        .controls-info {
+            font-size: 0.7rem;
+            color: var(--text-gray);
+            margin-top: 8px;
+        }
+        
+        .clue-inventory {
+            margin-top: 10px;
+            padding: 8px;
+            background-color: rgba(0,0,0,0.3);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .clue-inventory h3 {
+            font-size: 0.8rem;
+            color: var(--text-gray);
+            margin-bottom: 4px;
+        }
+        
+        .clue-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 0.7rem;
+            color: var(--text-light);
+        }
+        
+        .clue-list li {
+            margin-bottom: 2px;
+        }
+        
+        /* Controles Móviles */
+        .mobile-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 400px;
+            margin-top: 15px;
+            padding: 0 10px;
+            user-select: none;
+        }
+        
+        .d-pad {
+            display: grid;
+            grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+            gap: 5px;
+            width: 120px;
+            height: 120px;
+        }
+        
+        .action-button-container {
+            width: 120px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .control-button {
+            font-family: inherit;
+            background-color: var(--border-color);
+            color: var(--text-light);
+            border: 2px solid var(--bg-medium);
+            border-radius: 8px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 2px 2px var(--bg-dark);
+            transition: all 0.1s;
+        }
+        
+        .control-button:active {
+            background-color: #718096;
+            transform: translate(1px, 1px);
+            box-shadow: 1px 1px var(--bg-dark);
+        }
+        
+        /* Posicionamiento de botones D-pad */
+        #btnUp { grid-area: 1 / 2; }
+        #btnLeft { grid-area: 2 / 1; }
+        #btnRight { grid-area: 2 / 3; }
+        #btnDown { grid-area: 3 / 2; }
+        
+        /* Botón de acción */
+        #btnAction {
+            width: 70px;
+            height: 70px;
+            font-size: 1.8rem;
+        }
+        
+        /* Modales */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0,0,0,0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            padding: 10px;
+        }
+        
+        .modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-content {
+            font-family: inherit;
+            background-color: var(--bg-medium);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 0 25px rgba(0,0,0,0.7);
+            max-width: 95%;
+            width: 450px;
+            border: 3px solid var(--border-color);
+        }
+        
+        .modal-title {
+            font-size: 1.3rem;
+            color: var(--accent-red);
+            margin-bottom: 10px;
+        }
+        
+        .modal-text {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        
+        .modal-button {
+            font-family: inherit;
+            background-color: var(--accent-red);
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            box-shadow: 0 3px #c53030;
+        }
+        
+        .modal-button:hover {
+            background-color: #c53030;
+        }
+        
+        .modal-button:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px #c53030;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-world">
+        <div class="game-header">
+            <h1 class="game-title">Las Crónicas del Lumin Perdido</h1>
+            <div id="levelIndicator" class="level-indicator">Nivel: 1 - Bioma: Bosque</div>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        <div id="messageArea" class="message-area">Usa las flechas o los botones para moverte. Presiona 'E' o el botón [A] para interactuar.</div>
+        
+        <div class="mobile-controls">
+            <div class="d-pad">
+                <button id="btnUp" class="control-button">↑</button>
+                <button id="btnLeft" class="control-button">←</button>
+                <button id="btnRight" class="control-button">→</button>
+                <button id="btnDown" class="control-button">↓</button>
+            </div>
+            <div class="action-button-container">
+                <button id="btnAction" class="control-button">A</button>
+            </div>
+        </div>
+        
+        <div class="controls-info">Teclado: Flechas (Mov.), E (Acción)</div>
+        <div class="clue-inventory">
+            <h3>Pistas del Nivel:</h3>
+            <ul id="clueList" class="clue-list"></ul>
+        </div>
+    </div>
+
+    <div id="startModal" class="modal active">
+        <div class="modal-content">
+            <h2 class="modal-title">¡A la Aventura! 🌟</h2>
+            <p class="modal-text">
+                El Lumin se ha perdido. Cada nivel es un nuevo misterio.
+                Encuentra las pistas y avanza. 🗝️
+            </p>
+            <button id="startGameButton" class="modal-button">Comenzar 🚀</button>
+        </div>
+    </div>
+
+    <div id="levelCompleteModal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-title">¡Nivel Superado! 🎉</h2>
+            <p id="levelCompleteMessage" class="modal-text">¡Bien hecho! 👏</p>
+            <button id="nextLevelButton" class="modal-button">Siguiente ➡️</button>
+        </div>
+    </div>
+    
+    <div id="gameOverModal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-title">Fin de la Expedición ☠️</h2>
+            <p id="gameOverMessage" class="modal-text">El rastro se enfrió... ❄️</p>
+            <button id="restartGameButton" class="modal-button">Reintentar 🔄</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuración del juego
+        const config = {
+            TILE_SIZE: 32,
+            MAP_COLS: 18,
+            MAP_ROWS: 14,
+            PLAYER_START_POS: { x: 1, y: 1 },
+            TILES: {
+                EMPTY: 0, GROUND: 1, WALL: 2, PATH: 3, WATER: 4,
+                CLUE_SPOT: 5, EXIT: 6, SIGN: 7,
+                DECORATION_1: 10, DECORATION_2: 11
+            }
+        };
+
+        // Elementos del DOM
+        const elements = {
+            canvas: document.getElementById('gameCanvas'),
+            ctx: document.getElementById('gameCanvas').getContext('2d'),
+            messageArea: document.getElementById('messageArea'),
+            clueList: document.getElementById('clueList'),
+            levelIndicator: document.getElementById('levelIndicator'),
+            modals: {
+                start: document.getElementById('startModal'),
+                levelComplete: document.getElementById('levelCompleteModal'),
+                gameOver: document.getElementById('gameOverModal')
+            },
+            buttons: {
+                start: document.getElementById('startGameButton'),
+                nextLevel: document.getElementById('nextLevelButton'),
+                restart: document.getElementById('restartGameButton'),
+                mobile: {
+                    up: document.getElementById('btnUp'),
+                    down: document.getElementById('btnDown'),
+                    left: document.getElementById('btnLeft'),
+                    right: document.getElementById('btnRight'),
+                    action: document.getElementById('btnAction')
+                }
+            }
+        };
+
+        // Estados del juego
+        const gameState = {
+            running: false,
+            currentLevel: 1,
+            dynamicTileSize: config.TILE_SIZE,
+            foundCluesCount: 0,
+            player: {
+                x: config.PLAYER_START_POS.x,
+                y: config.PLAYER_START_POS.y,
+                size: config.TILE_SIZE * 0.7,
+                color: '#e74c3c',
+                emoji: '🧙' // Emoji para el jugador
+            },
+            gameMap: [],
+            cluesOnMap: [],
+            currentBiome: null
+        };
+
+        // Biomas del juego con emojis
+        const BIOMES = {
+            FOREST: {
+                name: "Bosque 🌲",
+                tiles: {
+                    [config.TILES.GROUND]: { emoji: '🟫', color: '#27ae60' },
+                    [config.TILES.WALL]: { emoji: '🌳', color: '#16a085' },
+                    [config.TILES.PATH]: { emoji: '🟨', color: '#d39c50' },
+                    [config.TILES.WATER]: { emoji: '💧', color: '#3498db' },
+                    [config.TILES.DECORATION_1]: { emoji: '🌼', color: '#f1c40f' },
+                    [config.TILES.DECORATION_2]: { emoji: '🍄', color: '#e74c3c' }
+                },
+                clueSymbol: "🌿",
+                clueTexts: ["Musgo luminoso...", "Hojas con símbolos...", "Viento susurra secretos..."],
+                numClues: 2
+            },
+            CAVE: {
+                name: "Cueva 🏔️",
+                tiles: {
+                    [config.TILES.GROUND]: { emoji: '🟫', color: '#7f8c8d' },
+                    [config.TILES.WALL]: { emoji: '🪨', color: '#34495e' },
+                    [config.TILES.PATH]: { emoji: '🟫', color: '#566573' },
+                    [config.TILES.WATER]: { emoji: '🌊', color: '#283747' },
+                    [config.TILES.DECORATION_1]: { emoji: '💎', color: '#f1c40f' },
+                    [config.TILES.DECORATION_2]: { emoji: '🔮', color: '#9b59b6' }
+                },
+                clueSymbol: "💎",
+                clueTexts: ["Eco resuena...", "Cristales brillan...", "Runas antiguas..."],
+                numClues: 3
+            }
+        };
+        gameState.currentBiome = BIOMES.FOREST;
+
+        // Funciones del juego
+        const gameFunctions = {
+            generateProceduralMap(biome) {
+                const newMap = Array(config.MAP_ROWS).fill().map(() => Array(config.MAP_COLS).fill(config.TILES.GROUND));
+                
+                for (let r = 0; r < config.MAP_ROWS; r++) {
+                    for (let c = 0; c < config.MAP_COLS; c++) {
+                        if (r === 0 || r === config.MAP_ROWS - 1 || c === 0 || c === config.MAP_COLS - 1) {
+                            newMap[r][c] = config.TILES.WALL;
+                        } else {
+                            newMap[r][c] = config.TILES.GROUND;
+                            if (Math.random() < 0.20 && !(r === config.PLAYER_START_POS.y && c === config.PLAYER_START_POS.x)) {
+                                newMap[r][c] = config.TILES.WALL;
+                            } else if (Math.random() < 0.05) {
+                                newMap[r][c] = config.TILES.DECORATION_1;
+                            } else if (Math.random() < 0.05) {
+                                newMap[r][c] = config.TILES.DECORATION_2;
+                            }
+                        }
+                    }
+                }
+                
+                newMap[config.PLAYER_START_POS.y][config.PLAYER_START_POS.x] = config.TILES.GROUND;
+                gameState.player.x = config.PLAYER_START_POS.x;
+                gameState.player.y = config.PLAYER_START_POS.y;
+
+                gameState.cluesOnMap = [];
+                let placedClues = 0;
+                
+                while (placedClues < biome.numClues) {
+                    const r = Math.floor(Math.random() * (config.MAP_ROWS - 2)) + 1;
+                    const c = Math.floor(Math.random() * (config.MAP_COLS - 2)) + 1;
+                    
+                    if (newMap[r][c] === config.TILES.GROUND) {
+                        newMap[r][c] = config.TILES.CLUE_SPOT;
+                        const clueText = biome.clueTexts[Math.floor(Math.random() * biome.clueTexts.length)];
+                        gameState.cluesOnMap.push({
+                            x: c, y: r, 
+                            text: clueText, 
+                            found: false, 
+                            symbol: biome.clueSymbol
+                        });
+                        placedClues++;
+                    }
+                }
+                
+                let exitPlaced = false;
+                while (!exitPlaced) {
+                    const r = Math.floor(Math.random() * (config.MAP_ROWS - 2)) + 1;
+                    const c = Math.floor(Math.random() * (config.MAP_COLS - 2)) + 1;
+                    
+                    if (newMap[r][c] === config.TILES.GROUND && (r !== gameState.player.y || c !== gameState.player.x)) {
+                        newMap[r][c] = config.TILES.EXIT;
+                        exitPlaced = true;
+                    }
+                }
+                
+                return newMap;
+            },
+
+            drawPlayer() {
+                const player = gameState.player;
+                const x = player.x * gameState.dynamicTileSize + (gameState.dynamicTileSize - player.size) / 2;
+                const y = player.y * gameState.dynamicTileSize + (gameState.dynamicTileSize - player.size) / 2;
+                
+                // Dibujar emoji del jugador
+                elements.ctx.font = `${player.size}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
+                elements.ctx.textAlign = 'center';
+                elements.ctx.textBaseline = 'middle';
+                elements.ctx.fillStyle = player.color;
+                elements.ctx.fillText(player.emoji, x + player.size/2, y + player.size/2);
+                elements.ctx.textAlign = 'left';
+                elements.ctx.textBaseline = 'alphabetic';
+            },
+
+            drawMap() {
+                const tileSize = gameState.dynamicTileSize;
+                const biome = gameState.currentBiome;
+                
+                for (let r = 0; r < config.MAP_ROWS; r++) {
+                    for (let c = 0; c < config.MAP_COLS; c++) {
+                        const tileType = gameState.gameMap[r][c];
+                        const x = c * tileSize;
+                        const y = r * tileSize;
+                        
+                        let tileDef = biome.tiles[config.TILES.GROUND];
+                        if (biome.tiles[tileType]) tileDef = biome.tiles[tileType];
+                        else if (tileType === config.TILES.CLUE_SPOT || tileType === config.TILES.EXIT) {
+                            tileDef = biome.tiles[config.TILES.GROUND];
+                        }
+
+                        // Dibujar fondo del tile
+                        elements.ctx.fillStyle = tileDef.color;
+                        elements.ctx.fillRect(x, y, tileSize, tileSize);
+
+                        // Dibujar emoji del tile
+                        if (tileType === config.TILES.CLUE_SPOT) {
+                            const clue = gameState.cluesOnMap.find(cl => cl.x === c && cl.y === r);
+                            if (clue && !clue.found) {
+                                elements.ctx.font = `${tileSize * 0.7}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
+                                elements.ctx.textAlign = 'center';
+                                elements.ctx.textBaseline = 'middle';
+                                elements.ctx.fillStyle = '#f1c40f';
+                                elements.ctx.fillText("❓", x + tileSize/2, y + tileSize/2);
+                                elements.ctx.textAlign = 'left';
+                                elements.ctx.textBaseline = 'alphabetic';
+                            }
+                        } else if (tileType === config.TILES.EXIT) {
+                            elements.ctx.font = `${tileSize * 0.7}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
+                            elements.ctx.textAlign = 'center';
+                            elements.ctx.textBaseline = 'middle';
+                            elements.ctx.fillStyle = '#2ecc71';
+                            elements.ctx.fillText("🚪", x + tileSize/2, y + tileSize/2);
+                            elements.ctx.textAlign = 'left';
+                            elements.ctx.textBaseline = 'alphabetic';
+                        } else if (tileType !== config.TILES.GROUND) {
+                            elements.ctx.font = `${tileSize * 0.7}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
+                            elements.ctx.textAlign = 'center';
+                            elements.ctx.textBaseline = 'middle';
+                            elements.ctx.fillStyle = '#fff';
+                            elements.ctx.fillText(tileDef.emoji, x + tileSize/2, y + tileSize/2);
+                            elements.ctx.textAlign = 'left';
+                            elements.ctx.textBaseline = 'alphabetic';
+                        }
+                    }
+                }
+            },
+
+            isWalkable(tileType) {
+                return tileType === config.TILES.GROUND || 
+                       tileType === config.TILES.PATH ||
+                       tileType === config.TILES.CLUE_SPOT || 
+                       tileType === config.TILES.EXIT ||
+                       tileType === config.TILES.DECORATION_1 || 
+                       tileType === config.TILES.DECORATION_2;
+            },
+
+            movePlayer(dx, dy) {
+                if (!gameState.running) return;
+                
+                const newX = gameState.player.x + dx;
+                const newY = gameState.player.y + dy;
+                
+                if (newX < 0 || newX >= config.MAP_COLS || newY < 0 || newY >= config.MAP_ROWS) return;
+
+                const targetTileType = gameState.gameMap[newY][newX];
+                
+                if (!this.isWalkable(targetTileType)) {
+                    let message = "No puedes pasar. 🚧";
+                    if (targetTileType === config.TILES.WALL) {
+                        message = gameState.currentBiome === BIOMES.FOREST ? 
+                                 "¡Un árbol! 🌳" : "¡Pared de roca! 🪨";
+                    } else if (targetTileType === config.TILES.WATER) {
+                        message = "¡Agua! 💧";
+                    }
+                    elements.messageArea.textContent = message;
+                    return;
+                }
+                
+                gameState.player.x = newX;
+                gameState.player.y = newY;
+                elements.messageArea.textContent = "Explorando... 🧭";
+                
+                if (targetTileType === config.TILES.EXIT) {
+                    if (gameState.foundCluesCount === gameState.currentBiome.numClues) {
+                        this.levelComplete();
+                    } else {
+                        elements.messageArea.textContent = `Faltan ${gameState.currentBiome.numClues - gameState.foundCluesCount} pista(s). 🔍`;
+                    }
+                }
+            },
+
+            interact() {
+                if (!gameState.running) return;
+                
+                const currentTileType = gameState.gameMap[gameState.player.y][gameState.player.x];
+                
+                if (currentTileType === config.TILES.CLUE_SPOT) {
+                    const clue = gameState.cluesOnMap.find(c => c.x === gameState.player.x && c.y === gameState.player.y);
+                    
+                    if (clue && !clue.found) {
+                        clue.found = true;
+                        gameState.foundCluesCount++;
+                        elements.messageArea.textContent = `Pista: ${clue.text} ${clue.symbol}`;
+                        this.updateClueInventory();
+                        
+                        if (gameState.foundCluesCount === gameState.currentBiome.numClues) {
+                            elements.messageArea.textContent = "¡Pistas completas! Busca la salida (🚪).";
+                        }
+                    } else if (clue && clue.found) {
+                        elements.messageArea.textContent = "Ya investigaste aquí. 👀";
+                    }
+                } else {
+                    elements.messageArea.textContent = "Nada que inspeccionar. 🤷";
+                }
+            },
+
+            updateClueInventory() {
+                elements.clueList.innerHTML = "";
+                
+                gameState.cluesOnMap.forEach(clue => {
+                    if (clue.found) {
+                        const li = document.createElement('li');
+                        li.textContent = `${clue.symbol} ${clue.text.substring(0, 25)}...`;
+                        elements.clueList.appendChild(li);
+                    }
+                });
+                
+                if (gameState.foundCluesCount < gameState.currentBiome.numClues) {
+                    const li = document.createElement('li');
+                    li.textContent = `(${gameState.foundCluesCount}/${gameState.currentBiome.numClues} pistas) 🔍`;
+                    elements.clueList.appendChild(li);
+                }
+                
+                if (gameState.cluesOnMap.length === 0 || 
+                    (gameState.foundCluesCount === 0 && gameState.cluesOnMap.every(c => !c.found))) {
+                    const li = document.createElement('li');
+                    if (gameState.cluesOnMap.length > 0 && gameState.currentBiome.numClues > 0) {
+                        li.textContent = "Busca los (❓)";
+                    } else if (gameState.currentBiome.numClues === 0) {
+                        li.textContent = "No hay pistas este nivel. 🤔";
+                    }
+                    if (!elements.clueList.hasChildNodes() || elements.clueList.textContent.trim() === "") {
+                        elements.clueList.appendChild(li);
+                    }
+                }
+            },
+
+            selectNextBiome() {
+                return (gameState.currentBiome === BIOMES.FOREST) ? BIOMES.CAVE : BIOMES.FOREST;
+            },
+
+            initializeLevel() {
+                elements.levelIndicator.textContent = `Nivel: ${gameState.currentLevel} - ${gameState.currentBiome.name}`;
+                gameState.gameMap = this.generateProceduralMap(gameState.currentBiome);
+                gameState.foundCluesCount = 0;
+                this.updateClueInventory();
+                elements.messageArea.textContent = "Nuevo nivel. ¡Encuentra las pistas! 🔍";
+            },
+
+            levelComplete() {
+                gameState.running = false;
+                document.getElementById('levelCompleteMessage').textContent = 
+                    `¡Superaste ${gameState.currentBiome.name}! ¿Listo para Nivel ${gameState.currentLevel + 1}? 🎉`;
+                elements.modals.levelComplete.classList.add('active');
+            },
+
+            startNextLevel() {
+                gameState.currentLevel++;
+                gameState.currentBiome = this.selectNextBiome();
+                this.initializeLevel();
+                gameState.running = true;
+                elements.modals.levelComplete.classList.remove('active');
+                this.mainLoop();
+            },
+
+            resetGame() {
+                gameState.currentLevel = 1;
+                gameState.currentBiome = BIOMES.FOREST;
+                this.initializeLevel();
+                gameState.player.x = config.PLAYER_START_POS.x;
+                gameState.player.y = config.PLAYER_START_POS.y;
+            },
+
+            mainLoop() {
+                if (!gameState.running) return;
+                
+                // Actualizar tamaño dinámico de los tiles
+                gameState.dynamicTileSize = elements.canvas.clientWidth / config.MAP_COLS;
+                gameState.player.size = gameState.dynamicTileSize * 0.7;
+
+                // Limpiar y dibujar
+                elements.ctx.clearRect(0, 0, elements.canvas.width, elements.canvas.height);
+                this.drawMap();
+                this.drawPlayer();
+
+                requestAnimationFrame(() => this.mainLoop());
+            },
+
+            resizeGameElements() {
+                const fixedWidth = Math.min(600, document.body.clientWidth * 0.9);
+                elements.canvas.width = config.MAP_COLS * (fixedWidth / (config.MAP_COLS * config.TILE_SIZE)) * config.TILE_SIZE;
+                elements.canvas.height = config.MAP_ROWS * (fixedWidth / (config.MAP_COLS * config.TILE_SIZE)) * config.TILE_SIZE;
+                gameState.dynamicTileSize = elements.canvas.width / config.MAP_COLS;
+                gameState.player.size = gameState.dynamicTileSize * 0.7;
+            },
+
+            initEventListeners() {
+                // Eventos de teclado
+                document.addEventListener('keydown', (e) => {
+                    if (!gameState.running && 
+                        !elements.modals.start.classList.contains('active') && 
+                        !elements.modals.levelComplete.classList.contains('active') && 
+                        !elements.modals.gameOver.classList.contains('active')) return;
+                        
+                    if (elements.modals.start.classList.contains('active') || 
+                        elements.modals.levelComplete.classList.contains('active') || 
+                        elements.modals.gameOver.classList.contains('active')) {
+                        if (e.key === 'Enter') {
+                            if (elements.modals.start.classList.contains('active')) elements.buttons.start.click();
+                            else if (elements.modals.levelComplete.classList.contains('active')) elements.buttons.nextLevel.click();
+                            else if (elements.modals.gameOver.classList.contains('active')) elements.buttons.restart.click();
+                        }
+                        return;
+                    }
+                    
+                    switch (e.key) {
+                        case 'ArrowUp': case 'w': this.movePlayer(0, -1); break;
+                        case 'ArrowDown': case 's': this.movePlayer(0, 1); break;
+                        case 'ArrowLeft': case 'a': this.movePlayer(-1, 0); break;
+                        case 'ArrowRight': case 'd': this.movePlayer(1, 0); break;
+                        case 'e': case 'E': this.interact(); break;
+                    }
+                });
+
+                // Eventos de botones móviles
+                elements.buttons.mobile.up.addEventListener('click', () => this.movePlayer(0, -1));
+                elements.buttons.mobile.down.addEventListener('click', () => this.movePlayer(0, 1));
+                elements.buttons.mobile.left.addEventListener('click', () => this.movePlayer(-1, 0));
+                elements.buttons.mobile.right.addEventListener('click', () => this.movePlayer(1, 0));
+                elements.buttons.mobile.action.addEventListener('click', () => this.interact());
+
+                // Eventos de botones de modal
+                elements.buttons.start.addEventListener('click', () => {
+                    elements.modals.start.classList.remove('active');
+                    this.resetGame();
+                    gameState.running = true;
+                    this.mainLoop();
+                });
+                
+                elements.buttons.nextLevel.addEventListener('click', () => this.startNextLevel());
+                
+                elements.buttons.restart.addEventListener('click', () => {
+                    elements.modals.gameOver.classList.remove('active');
+                    elements.modals.start.classList.add('active');
+                });
+            },
+
+            initGame() {
+                this.resizeGameElements();
+                elements.modals.start.classList.add('active');
+                elements.ctx.fillStyle = '#1a202c';
+                elements.ctx.fillRect(0, 0, elements.canvas.width, elements.canvas.height);
+                elements.ctx.fillStyle = '#e2e8f0';
+                elements.ctx.font = "16px 'Press Start 2P'";
+                elements.ctx.textAlign = 'center';
+                elements.ctx.fillText("Cargando... ⏳", elements.canvas.width/2, elements.canvas.height/2);
+                elements.ctx.textAlign = 'left';
+                
+                this.initEventListeners();
+                window.addEventListener('resize', () => this.resizeGameElements());
+            }
+        };
+
+        // Inicializar el juego cuando la ventana se carga
+        window.onload = () => gameFunctions.initGame();
+    </script>
+</body>
+</html>
